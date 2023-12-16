@@ -60,7 +60,6 @@ class YtdlpApp(tk.Toplevel):
         self.title("X3L | yt-dlp")
         self.geometry("720x480")
         self.resizable(False, False)
-        self.attributes("-topmost", True)
 
         ### WIDGETS ###
         # Labels #
@@ -107,9 +106,6 @@ class YtdlpApp(tk.Toplevel):
             self, 
             length      = 100, 
             mode        = "determinate")
-        self.console_scrollbar = tk.Scrollbar(self)
-        self.console = tk.Text(self, height=5, state=tk.DISABLED, yscrollcommand=self.console_scrollbar.set)
-        self.console_scrollbar.config(command=self.console.yview)
         self.download_queue         = queue.Queue()
         self.download_thread        = threading.Thread(
             target  = self.process_queue)
@@ -136,11 +132,7 @@ class YtdlpApp(tk.Toplevel):
             x       = 360,
             y       = 210,
             anchor  = "center")
-        self.console_scrollbar.place(x=680, y=300, anchor="center", height=100)
-        self.console.place(
-            x       = 360,
-            y       = 300,
-            anchor  = "center")
+        
         # Radios #
         self.radio_youtube.place(
             x       = 200, 
@@ -185,21 +177,15 @@ class YtdlpApp(tk.Toplevel):
         
     def download_youtube(self, urls):
         command = f"yt-dlp -f mp4 -P /home/zel/Downloads --newline {urls}"
-        self.console.config(state=tk.NORMAL)
-        self.console.insert(tk.END, f"❌ {urls}\n")  # Add a red "x" next to the URL
-        self.console.config(state=tk.DISABLED)
-        self.download_queue.put((command, self.console.index(tk.INSERT), urls))
+        self.download_queue.put((command, urls))
 
     def download_patreon(self, urls):
         command = f"yt-dlp --cookies-from-browser brave -f mp4 -P /home/zel/Downloads --newline {urls}"
-        self.console.config(state=tk.NORMAL)
-        self.console.insert(tk.END, f"❌ {urls}\n")  # Add a red "x" next to the URL
-        self.console.config(state=tk.DISABLED)
-        self.download_queue.put((command, self.console.index(tk.INSERT), urls))
+        self.download_queue.put((command, urls))
 
     def process_queue(self):
         try:
-            command, index, urls = self.download_queue.get_nowait()
+            command, urls = self.download_queue.get_nowait()
         except queue.Empty:
             self.after(100, self.process_queue)
             return
@@ -227,19 +213,8 @@ class YtdlpApp(tk.Toplevel):
                     return_code = process.poll()
                     if return_code is not None:
                         process_finished = True
-                        self.console.config(state=tk.NORMAL)
-                        if return_code != 0:
-                            self.console.insert(tk.END, f"Error: {process.stderr.read().decode()}\n")
-                        else:
-                            # Delete the lines with ❌ and insert the lines with ✅
-                            self.console.delete(f"{index} linestart", f"{index} lineend+1c")
-                            self.console.insert(index, f"✅ {urls}\n")
-                        self.console.see(tk.END)
-                        self.console.config(state=tk.DISABLED)
                         self.download_queue.task_done()
                     self.after(100, self.process_queue)
-                else:
-                    self.console.delete(f"{index} linestart", f"{index} lineend+1c")
 
         check_output()
         
