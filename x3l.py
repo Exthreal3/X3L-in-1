@@ -1,14 +1,10 @@
 
 
+import subprocess, queue, threading, re, webbrowser
 import tkinter as tk
 from tkinter import ttk
-import subprocess
-import queue
-import threading
-import re
-from os import system
 from tkinter.ttk import Progressbar
-import webbrowser
+from os import system
 
 class X3L(tk.Tk):
     def __init__(self):
@@ -18,16 +14,7 @@ class X3L(tk.Tk):
         self.title("X3L App Launcher")
         self.geometry("720x480")
         self.resizable(False, False)
-        self.screen_width = self.winfo_screenwidth()
-        self.screen_height = self.winfo_screenheight()
-        self.x3l_width  = 720
-        self.x3l_height = 480
-        self.x_offset = (self.screen_width - self.x3l_width) // 6
-        self.y_offset = (self.screen_height - self.x3l_height) // 4
-        self.geometry(f'{self.x3l_width}x{self.x3l_height}+{self.x_offset}+{self.y_offset}') 
 
-        self.lastClickX = 0
-        self.lastClickY = 0
         ### BUTTONS ###
         button_ytdlp = tk.Button(
             self, 
@@ -55,19 +42,6 @@ class X3L(tk.Tk):
             x       = 360,
             y       = 90,
             anchor  = "center")
-
-        def SaveLastClickPos(event):
-            global lastClickX, lastClickY
-            lastClickX = event.x
-            lastClickY = event.y
-
-        def Dragging(event):
-            x, y = event.x - lastClickX + self.winfo_x(), event.y - lastClickY + self.winfo_y()
-            self.geometry('+%s+%s' % (x, y))
-
-        self.bind('<Button-1>', SaveLastClickPos)
-        self.bind('<B1-Motion>', Dragging)
-
         
     def launch_ytdlp(self):
         self.withdraw()
@@ -76,7 +50,6 @@ class X3L(tk.Tk):
     def launch_gptpdf(self):
         self.withdraw()
         GptpdfApp(self)
-        
         
 class YtdlpApp(tk.Toplevel):
     def __init__(self, main_app):
@@ -88,29 +61,6 @@ class YtdlpApp(tk.Toplevel):
         self.geometry("720x480")
         self.resizable(False, False)
         self.attributes("-topmost", True)
-        self.screen_width = self.winfo_screenwidth()
-        self.screen_height = self.winfo_screenheight()
-        self.x3l_width  = 720
-        self.x3l_height = 480
-        self.x_offset = (self.screen_width - self.x3l_width) // 2
-        self.y_offset = (self.screen_height - self.x3l_height) // 2
-        self.geometry(f'{self.x3l_width}x{self.x3l_height}+{self.x_offset}+{self.y_offset}') 
-
-        self.lastClickX = 0
-        self.lastClickY = 0
-
-        def SaveLastClickPos(event):
-            global lastClickX, lastClickY
-            lastClickX = event.x
-            lastClickY = event.y
-
-        def Dragging(event):
-            x, y = event.x - lastClickX + self.winfo_x(), event.y - lastClickY + self.winfo_y()
-            self.geometry('+%s+%s' % (x, y))
-
-        self.bind('<Button-1>', SaveLastClickPos)
-        self.bind('<B1-Motion>', Dragging)
-
 
         ### WIDGETS ###
         # Labels #
@@ -119,6 +69,8 @@ class YtdlpApp(tk.Toplevel):
             text        = "")
         
         # Entries #
+        self.url_type               = tk.StringVar(
+            value       = "youtube")
         self.url_entry              = tk.Entry(
             self, 
             width       = 50)
@@ -155,16 +107,14 @@ class YtdlpApp(tk.Toplevel):
             self, 
             length      = 100, 
             mode        = "determinate")
-        self.console                = tk.Text(
-            self, 
-            height      = 5, 
-            state       = tk.DISABLED)
+        self.console_scrollbar = tk.Scrollbar(self)
+        self.console = tk.Text(self, height=5, state=tk.DISABLED, yscrollcommand=self.console_scrollbar.set)
+        self.console_scrollbar.config(command=self.console.yview)
         self.download_queue         = queue.Queue()
         self.download_thread        = threading.Thread(
             target  = self.process_queue)
         self.download_thread.daemon = True
-        self.url_type               = tk.StringVar(
-            value       = "youtube")
+        
         self.download_thread.start()
         
         
@@ -186,11 +136,11 @@ class YtdlpApp(tk.Toplevel):
             x       = 360,
             y       = 210,
             anchor  = "center")
+        self.console_scrollbar.place(x=680, y=300, anchor="center", height=100)
         self.console.place(
             x       = 360,
             y       = 300,
             anchor  = "center")
-        
         # Radios #
         self.radio_youtube.place(
             x       = 200, 
@@ -215,52 +165,50 @@ class YtdlpApp(tk.Toplevel):
             y       = 440,
             anchor  = "center")
    
+        self.after(100, self.process_queue)
+   
     def return_app(self):
         
         self.main_app.deiconify()
         self.destroy()
         
     def download(self):
-        url                     = self.url_entry.get()
-        url_type                = self.url_type.get()
+        url = self.url_entry.get()
+        urls = self.url_entry.get().split('\n')
+        url_type = self.url_type.get()
 
-        if url_type == 'youtube':
-            self.download_youtube(url)
-        elif url_type == 'patreon':
-            self.download_patreon(url)
+        for url in urls:
+            if url_type == 'youtube':
+                self.download_youtube(url)
+            elif url_type == 'patreon':
+                self.download_patreon(url)
         
-    def download_youtube(self, url):
-        url = self.url_youtube.get()
-        command = f"yt-dlp --newline {url}"
+    def download_youtube(self, urls):
+        command = f"yt-dlp -f mp4 -P /home/zel/Downloads --newline {urls}"
         self.console.config(state=tk.NORMAL)
-        self.console.insert(tk.END, f"Added to Queue: {url}\n")
+        self.console.insert(tk.END, f"❌ {urls}\n")  # Add a red "x" next to the URL
         self.console.config(state=tk.DISABLED)
-        self.download_queue.put(command)
+        self.download_queue.put((command, self.console.index(tk.INSERT), urls))
 
-    def download_patreon(self, url):
-        
-        if not url.startswith('https://www.patreon.com/'):
-            print("Invalid Patreon URL")
-            return        
-        
-        patreon                 = self.url_patreon.get()
-        command                 = f"yt-dlp --cookies-from-browser brave --newline {patreon}"
-        
+    def download_patreon(self, urls):
+        command = f"yt-dlp --cookies-from-browser brave -f mp4 -P /home/zel/Downloads --newline {urls}"
         self.console.config(state=tk.NORMAL)
-        self.console.insert(tk.END, f"Added to Queue: {patreon}\n")
+        self.console.insert(tk.END, f"❌ {urls}\n")  # Add a red "x" next to the URL
         self.console.config(state=tk.DISABLED)
-        self.download_queue.put(command)
+        self.download_queue.put((command, self.console.index(tk.INSERT), urls))
 
     def process_queue(self):
         try:
-            command = self.download_queue.get_nowait()
+            command, index, urls = self.download_queue.get_nowait()
         except queue.Empty:
             self.after(100, self.process_queue)
             return
 
         process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
+        process_finished = False
 
         def check_output():
+            nonlocal process_finished
             output = process.stdout.readline().decode()
             if output:
                 match = re.search(r"\[download\]\s+(?P<percent>\d+\.\d)%", output)
@@ -275,22 +223,28 @@ class YtdlpApp(tk.Toplevel):
 
                 self.after(100, check_output)
             else:
-                return_code = process.poll()
-                if return_code is not None:
-                    self.console.config(state=tk.NORMAL)
-                    self.console.delete("1.0", tk.END)
-                    self.console.config(state=tk.DISABLED)
-                    if return_code != 0:
-                        self.console.insert(tk.END, f"Error: {process.stderr.read().decode()}")
+                if not process_finished:
+                    return_code = process.poll()
+                    if return_code is not None:
+                        process_finished = True
+                        self.console.config(state=tk.NORMAL)
+                        if return_code != 0:
+                            self.console.insert(tk.END, f"Error: {process.stderr.read().decode()}\n")
+                        else:
+                            # Delete the lines with ❌ and insert the lines with ✅
+                            self.console.delete(f"{index} linestart", f"{index} lineend+1c")
+                            self.console.insert(index, f"✅ {urls}\n")
                         self.console.see(tk.END)
-                    self.download_queue.task_done()
+                        self.console.config(state=tk.DISABLED)
+                        self.download_queue.task_done()
                     self.after(100, self.process_queue)
-                    
-        check_output()
+                else:
+                    self.console.delete(f"{index} linestart", f"{index} lineend+1c")
 
+        check_output()
+        
     def open_downloads_folder(self):
-        webbrowser.open("/home/zel")
-    
+        webbrowser.open("/home/zel/Downloads")
     
 class GptpdfApp(tk.Toplevel):
     def __init__(self):
