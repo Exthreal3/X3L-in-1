@@ -1,6 +1,6 @@
 
 
-import subprocess, queue, threading, re, webbrowser
+import subprocess, queue, threading, re, webbrowser, os
 import tkinter as tk
 from tkinter import ttk
 from tkinter.ttk import Progressbar
@@ -22,8 +22,14 @@ class X3L(tk.Tk):
             command     = self.launch_ytdlp)
         button_gptpdf = tk.Button(
             self, 
-            text        = "gptpdf", 
+            text        = "GPT-PDF", 
             command     = self.launch_gptpdf)
+        button_ffmpeg = tk.Button(
+            self, 
+            text        = "FFmpeg", 
+            command     = self.launch_ffmpeg)
+        
+        
         button_exit = tk.Button(
             self, 
             text        = "Exit", 
@@ -31,16 +37,20 @@ class X3L(tk.Tk):
         
         ### PLACEMENTS ###
         button_ytdlp.place(
-            x       = 360,
+            x       = 70,
+            y       = 30,
+            anchor  = "center")
+        button_ffmpeg.place(
+            x       = 160,
             y       = 30,
             anchor  = "center")
         button_gptpdf.place(
-            x       = 360,
-            y       = 60,
+            x       = 255,
+            y       = 30,
             anchor  = "center")
         button_exit.place(
-            x       = 360,
-            y       = 90,
+            x       = 690,
+            y       = 20,
             anchor  = "center")
         
     def launch_ytdlp(self):
@@ -49,7 +59,11 @@ class X3L(tk.Tk):
 
     def launch_gptpdf(self):
         self.withdraw()
-        GptpdfApp(self)
+        GptpdfApp(self)    
+    
+    def launch_ffmpeg(self):
+        self.withdraw()
+        Ffmpeg(self)
         
 class YtdlpApp(tk.Toplevel):
     def __init__(self, main_app):
@@ -222,8 +236,76 @@ class YtdlpApp(tk.Toplevel):
         webbrowser.open("/home/zel/Downloads")
     
 class GptpdfApp(tk.Toplevel):
-    def __init__(self):
-        pass
+    def __init__(self, main_app):
+        super().__init__()
+        
+        ### TKINTER SETUP ###
+        self.main_app = main_app
+        self.title("X3L | ChatGPT-PDF")
+        self.geometry("720x480")
+        self.resizable(False, False)
+
+        ### WIDGETS ###
+        # Labels #
+        self.title_label            = tk.Label(
+            self, 
+            text        = "")
+        
+        # Entries #
+        # Radios #
+        # Buttons #
+        button_return                 = tk.Button(
+            self, 
+            text        = "Return", 
+            command     = self.return_app)
+        
+        # Miscellaneous #
+        button_return.place(
+            x       = 60,
+            y       = 440,
+            anchor  = "center")
+        
+    def return_app(self):
+        
+        self.main_app.deiconify()
+        self.destroy()    
+
+    pass
+
+class Ffmpeg(tk.Toplevel):
+    def __init__(self, main_app):
+        super().__init__()
+        
+        ### TKINTER SETUP ###
+        self.main_app = main_app
+        self.title("X3L | ffmpeg")
+        self.geometry("720x480")
+        self.resizable(False, False)
+
+        ### WIDGETS ###
+        # Labels #
+        self.title_label            = tk.Label(
+            self, 
+            text        = "")
+        
+        # Entries #
+        # Radios #
+        # Buttons #
+        button_return                 = tk.Button(
+            self, 
+            text        = "Return", 
+            command     = self.return_app)
+        
+        # Miscellaneous #
+        button_return.place(
+            x       = 60,
+            y       = 440,
+            anchor  = "center")
+        
+    def return_app(self):
+        
+        self.main_app.deiconify()
+        self.destroy()    
 
     pass
 
