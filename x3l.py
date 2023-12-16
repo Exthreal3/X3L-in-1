@@ -307,6 +307,36 @@ class Ffmpeg(tk.Toplevel):
         self.main_app.deiconify()
         self.destroy()    
 
+    def launch_ffmpeg(self, input_directory, output_parent_directory):
+        # Loop through all .mp4 files in the input directory
+        for input_video in os.listdir(input_directory):
+            if input_video.endswith(".mp4"):
+                # Check if the file is a regular file
+                if os.path.isfile(os.path.join(input_directory, input_video)):
+                    # Extract the file name (without extension) to use as the output directory name
+                    output_directory = os.path.join(output_parent_directory, os.path.splitext(input_video)[0])
+
+                    # Create a new output directory for each input video
+                    os.makedirs(output_directory, exist_ok=True)
+
+                    # Use ffmpeg to create 15-second segments
+                    command = [
+                        "ffmpeg", "-i", os.path.join(input_directory, input_video), "-c", "copy", "-f", "segment",
+                        "-segment_time", "15", "-reset_timestamps", "1", "-map", "0", os.path.join(output_directory, "clip_%03d.mp4")
+                    ]
+                    subprocess.run(command, check=True)
+
+    def select_directory(title):
+        root = Tk()
+        root.withdraw()  # Hide the main window
+        directory = filedialog.askdirectory(title=title)  # Show the "Open" dialog box and return the path to the selected directory
+        root.destroy()  # Destroy the main window
+        return directory
+
+    ffmpeg = Ffmpeg()
+    input_directory = select_directory("Select Input Directory")
+    output_directory = select_directory("Select Output Directory")
+    ffmpeg.launch_ffmpeg(input_directory, output_directory)
     pass
 
 if __name__ == "__main__":
