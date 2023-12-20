@@ -1,15 +1,22 @@
+"""_summary_"""
 
-
-import subprocess, queue, threading, re, webbrowser, os
+import subprocess
+import queue
+import threading
+import re
+import webbrowser
+import os
 import tkinter as tk
 from tkinter import ttk
 from tkinter.ttk import Progressbar
 from os import system
-
+import sys
+import tkinter.filedialog
 class X3L(tk.Tk):
+    """_summary_"""
     def __init__(self):
         super().__init__()
-        
+
         ### TKINTER SETUP ###
         self.title("X3L App Launcher")
         self.geometry("720x480")
@@ -17,24 +24,22 @@ class X3L(tk.Tk):
 
         ### BUTTONS ###
         button_ytdlp = tk.Button(
-            self, 
-            text        = "yt-dlp", 
+            self,
+            text        = "yt-dlp",
             command     = self.launch_ytdlp)
         button_gptpdf = tk.Button(
-            self, 
-            text        = "GPT-PDF", 
+            self,
+            text        = "GPT-PDF",
             command     = self.launch_gptpdf)
         button_ffmpeg = tk.Button(
-            self, 
-            text        = "FFmpeg", 
+            self,
+            text        = "FFmpeg",
             command     = self.launch_ffmpeg)
-        
-        
         button_exit = tk.Button(
-            self, 
-            text        = "Exit", 
+            self,
+            text        = "Exit",
             command     = self.destroy)
-        
+
         ### PLACEMENTS ###
         button_ytdlp.place(
             x       = 70,
@@ -52,23 +57,50 @@ class X3L(tk.Tk):
             x       = 690,
             y       = 20,
             anchor  = "center")
-        
+
     def launch_ytdlp(self):
+        """_summary_"""
         self.withdraw()
         YtdlpApp(self)
 
     def launch_gptpdf(self):
+        """_summary_"""
         self.withdraw()
-        GptpdfApp(self)    
-    
+        GptpdfApp(self)
+
     def launch_ffmpeg(self):
+        """_summary_
+
+        Args:
+            input_directory (_type_): _description_
+            output_parent_directory (_type_): _description_
+        """
         self.withdraw()
-        Ffmpeg(self)
-        
+        ffmpeg = Ffmpeg(self)
+        # Loop through all .mp4 files in the selected directory
+        for input_video in os.listdir(self.selected_directory):
+            if input_video.endswith(".mp4"):
+                # Check if the file is a regular file
+                if os.path.isfile(os.path.join(ffmpeg.selected_directory, input_video)):
+                    # Extract the file name (without extension) to use as the output directory name
+                    output_directory = os.path.join(ffmpeg.selected_directory, os.path.splitext(input_video)[0])
+
+                    # Create a new output directory for each input video
+                    os.makedirs(output_directory, exist_ok=True)
+
+                    # Use ffmpeg to create 15-second segments
+                    command = [
+                        "ffmpeg", "-i", os.path.join(ffmpeg.selected_directory, input_video), "-c", "copy", "-f", "segment",
+                        "-segment_time", "15", "-reset_timestamps", "1", "-map", "0", os.path.join(output_directory, "clip_%03d.mp4")
+                    ]
+                    subprocess.run(command, check=True)
+
+
 class YtdlpApp(tk.Toplevel):
+    """_summary_"""
     def __init__(self, main_app):
         super().__init__()
-        
+
         ### TKINTER SETUP ###
         self.main_app = main_app
         self.title("X3L | yt-dlp")
@@ -78,17 +110,17 @@ class YtdlpApp(tk.Toplevel):
         ### WIDGETS ###
         # Labels #
         self.title_label            = tk.Label(
-            self, 
+            self,
             text        = "")
-        
+
         # Entries #
         self.url_type               = tk.StringVar(
             value       = "youtube")
         self.url_entry              = tk.Entry(
-            self, 
+            self,
             width       = 50)
 
-        
+
         # Radios #
         self.radio_youtube          = tk.Radiobutton(
             self, 
@@ -100,11 +132,11 @@ class YtdlpApp(tk.Toplevel):
             text        = "Patreon", 
             variable    = self.url_type, 
             value       = "patreon")
-       
+
         # Buttons #
         self.download_button        = tk.Button(
-            self, 
-            text        = "Download", 
+            self,
+            text        = "Download",
             command     = self.download)
         self.open_folder_button     = tk.Button(
             self, 
@@ -114,39 +146,39 @@ class YtdlpApp(tk.Toplevel):
             self, 
             text        = "Return", 
             command     = self.return_app)
-       
+
         # Miscellaneous #
         self.progress               = Progressbar(
             self, 
-            length      = 100, 
+            length      = 100,
             mode        = "determinate")
         self.download_queue         = queue.Queue()
         self.download_thread        = threading.Thread(
             target  = self.process_queue)
         self.download_thread.daemon = True
-        
+
         self.download_thread.start()
-        
-        
+
+
         ### PLACEMENTS ###
         # Labels #
         self.title_label.place(
             x       = 360,
             y       = 180,
             anchor  = "center")
-        
+
         # Entries #
         self.url_entry.place(
             x       = 360, 
             y       = 30, 
             anchor  = "center")
-        
+
         # Miscellaneous #
         self.progress.place(
             x       = 360,
             y       = 210,
             anchor  = "center")
-        
+
         # Radios #
         self.radio_youtube.place(
             x       = 200, 
@@ -156,7 +188,7 @@ class YtdlpApp(tk.Toplevel):
             x       = 520, 
             y       = 60, 
             anchor  = "center")
-        
+
         # Buttons #
         self.open_folder_button.place(
             x       = 360,
@@ -170,15 +202,16 @@ class YtdlpApp(tk.Toplevel):
             x       = 60,
             y       = 440,
             anchor  = "center")
-   
+
         self.after(100, self.process_queue)
-   
+
     def return_app(self):
-        
+        """_summary_"""
         self.main_app.deiconify()
         self.destroy()
-        
+
     def download(self):
+        """_summary_"""
         url = self.url_entry.get()
         urls = self.url_entry.get().split('\n')
         url_type = self.url_type.get()
@@ -188,16 +221,19 @@ class YtdlpApp(tk.Toplevel):
                 self.download_youtube(url)
             elif url_type == 'patreon':
                 self.download_patreon(url)
-        
+
     def download_youtube(self, urls):
+        """_summary_"""
         command = f"yt-dlp -f mp4 -P /home/zel/Downloads --newline {urls}"
         self.download_queue.put((command, urls))
 
     def download_patreon(self, urls):
+        """_summary_"""
         command = f"yt-dlp --cookies-from-browser brave -f mp4 -P /home/zel/Downloads --newline {urls}"
         self.download_queue.put((command, urls))
 
     def process_queue(self):
+        """_summary_"""
         try:
             command, urls = self.download_queue.get_nowait()
         except queue.Empty:
@@ -231,11 +267,13 @@ class YtdlpApp(tk.Toplevel):
                     self.after(100, self.process_queue)
 
         check_output()
-        
+
     def open_downloads_folder(self):
+        """_summary_"""
         webbrowser.open("/home/zel/Downloads")
-    
+
 class GptpdfApp(tk.Toplevel):
+    """_summary_"""
     def __init__(self, main_app):
         super().__init__()
         
@@ -264,18 +302,16 @@ class GptpdfApp(tk.Toplevel):
             x       = 60,
             y       = 440,
             anchor  = "center")
-        
-    def return_app(self):
-        
-        self.main_app.deiconify()
-        self.destroy()    
 
-    pass
+    def return_app(self):
+        """_summary_"""
+        self.main_app.deiconify()
+        self.destroy()
 
 class Ffmpeg(tk.Toplevel):
     def __init__(self, main_app):
         super().__init__()
-        
+
         ### TKINTER SETUP ###
         self.main_app = main_app
         self.title("X3L | ffmpeg")
@@ -284,60 +320,30 @@ class Ffmpeg(tk.Toplevel):
 
         ### WIDGETS ###
         # Labels #
-        self.title_label            = tk.Label(
-            self, 
-            text        = "")
-        
+        self.title_label = tk.Label(self, text="")
+
         # Entries #
         # Radios #
         # Buttons #
-        button_return                 = tk.Button(
-            self, 
-            text        = "Return", 
-            command     = self.return_app)
-        
+        self.button_return = tk.Button(self, text="Return", command=self.return_app)
+        self.button_browse = tk.Button(self, text="Browse", command=self.select_directory)
+
         # Miscellaneous #
-        button_return.place(
-            x       = 60,
-            y       = 440,
-            anchor  = "center")
-        
+        self.button_return.place(x=60, y=440, anchor="center")
+        self.button_browse.place(x=360, y=120, anchor="center")
+
+        # Initialize selected directory to None
+        self.selected_directory = None
+
     def return_app(self):
-        
+        """_summary_"""
         self.main_app.deiconify()
         self.destroy()    
 
-    def launch_ffmpeg(self, input_directory, output_parent_directory):
-        # Loop through all .mp4 files in the input directory
-        for input_video in os.listdir(input_directory):
-            if input_video.endswith(".mp4"):
-                # Check if the file is a regular file
-                if os.path.isfile(os.path.join(input_directory, input_video)):
-                    # Extract the file name (without extension) to use as the output directory name
-                    output_directory = os.path.join(output_parent_directory, os.path.splitext(input_video)[0])
+    def select_directory(self):
+        """_summary_"""
+        self.selected_directory = tkinter.filedialog.askdirectory(title="Select a directory")
 
-                    # Create a new output directory for each input video
-                    os.makedirs(output_directory, exist_ok=True)
-
-                    # Use ffmpeg to create 15-second segments
-                    command = [
-                        "ffmpeg", "-i", os.path.join(input_directory, input_video), "-c", "copy", "-f", "segment",
-                        "-segment_time", "15", "-reset_timestamps", "1", "-map", "0", os.path.join(output_directory, "clip_%03d.mp4")
-                    ]
-                    subprocess.run(command, check=True)
-
-    def select_directory(title):
-        root = Tk()
-        root.withdraw()  # Hide the main window
-        directory = filedialog.askdirectory(title=title)  # Show the "Open" dialog box and return the path to the selected directory
-        root.destroy()  # Destroy the main window
-        return directory
-
-    ffmpeg = Ffmpeg()
-    input_directory = select_directory("Select Input Directory")
-    output_directory = select_directory("Select Output Directory")
-    ffmpeg.launch_ffmpeg(input_directory, output_directory)
-    pass
 
 if __name__ == "__main__":
     app = X3L()
