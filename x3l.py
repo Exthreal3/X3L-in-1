@@ -224,12 +224,12 @@ class YtdlpApp(tk.Toplevel):
 
     def download_youtube(self, urls):
         """_summary_"""
-        command = f"yt-dlp -f mp4 -P /home/zel/Downloads --newline {urls}"
+        command = f"yt-dlp -f mp4 --newline {urls}"
         self.download_queue.put((command, urls))
 
     def download_patreon(self, urls):
         """_summary_"""
-        command = f"yt-dlp --cookies-from-browser brave -f mp4 -P /home/zel/Downloads --newline {urls}"
+        command = f"yt-dlp --cookies-from-browser brave -f mp4 --newline {urls}"
         self.download_queue.put((command, urls))
 
     def process_queue(self):
@@ -270,7 +270,7 @@ class YtdlpApp(tk.Toplevel):
 
     def open_downloads_folder(self):
         """_summary_"""
-        webbrowser.open("/home/zel/Downloads")
+        webbrowser.open("/mnt/sda4")
 
 class GptpdfApp(tk.Toplevel):
     """_summary_"""
